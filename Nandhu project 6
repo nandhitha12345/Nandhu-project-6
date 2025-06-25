@@ -1,0 +1,62 @@
+import requests
+from bs4 import BeautifulSoup
+from googlesearch import search
+
+# Replace with your own OpenWeatherMap API key
+API_KEY = "YOUR_OPENWEATHERMAP_API_KEY"
+
+def get_weather_from_api(city):
+    print(f"\n[1] Trying API for weather in '{city}'...")
+    base_url = "http://api.openweathermap.org/data/2.5/weather"
+    params = {"q": city, "appid": API_KEY, "units": "metric"}
+
+    response = requests.get(base_url, params=params)
+
+    if response.status_code == 200:
+        data = response.json()
+        temp = data['main']['temp']
+        weather = data['weather'][0]['description']
+        print(f"✅ Weather in {city} (API): {temp}°C, {weather}")
+        return True
+    else:
+        print(f"❌ API failed. Status code: {response.status_code}")
+        return False
+
+def scrape_weather_from_google(city):
+    print(f"\n[2] Trying web scraping from Google for '{city}'...")
+    query = f"weather in {city}"
+    headers = {"User-Agent": "Mozilla/5.0"}
+
+    response = requests.get(f"https://www.google.com/search?q={query}", headers=headers)
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    try:
+        location = soup.find("div", attrs={"id": "wob_loc"}).text
+        temp = soup.find("span", attrs={"id": "wob_tm"}).text
+        condition = soup.find("span", attrs={"id": "wob_dc"}).text
+        print(f"✅ Weather in {location} (Scraped): {temp}°C, {condition}")
+        return True
+    except AttributeError:
+        print("❌ Web scraping failed. Weather info not found.")
+        return False
+
+def google_search_fallback(city):
+    print(f"\n[3] Doing Google search for '{city}'...")
+    query = f"{city} weather"
+    results = list(search(query, num_results=5))
+    print("🔎 Top Google search results:")
+    for i, result in enumerate(results):
+        print(f"{i+1}. {result}")
+
+def main():
+    city = input("Enter a city name: ").strip()
+
+    success = get_weather_from_api(city)
+
+    if not success:
+        scraped = scrape_weather_from_google(city)
+        if not scraped:
+            google_search_fallback(city)
+
+if __name__ == "__main__":
+    main()
